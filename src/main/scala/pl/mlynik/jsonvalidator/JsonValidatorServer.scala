@@ -51,7 +51,7 @@ final case class JsonValidatorServer(
           )
         )
       )
-      .out(jsonBody[SuccessResponse])
+      .out(statusCode(ModelStatusCode.Created).and(jsonBody[SuccessResponse]))
 
   val schemaGetEndpoint: PublicEndpoint[String, ErrorResponse, String, Any] =
     endpoint.get
