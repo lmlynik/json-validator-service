@@ -5,10 +5,12 @@ import zio.*
 import com.github.fge.jsonschema.main.JsonSchemaFactory
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.github.fge.jsonschema.core.report.ProcessingReport
 
 enum JsonSchemaValidationError {
   case InvalidJson(error: String) extends JsonSchemaValidationError
   case ValidationFailure(error: String) extends JsonSchemaValidationError
+  case SchemaError extends JsonSchemaValidationError
 }
 
 trait JsonSchemaValidator {
@@ -27,24 +29,30 @@ final case class JsonSchemaValidationLive(objectMapper: ObjectMapper)
   ): IO[JsonSchemaValidationError, Unit] = {
 
     for {
-      schemaContentNode <- objectMapper
-        .readTreeM(schemaContent.content)
-        .orElseFail(JsonSchemaValidationError.InvalidJson(""))
-      schema <- ZIO
-        .attempt(JsonSchemaFactory.byDefault().getJsonSchema(schemaContentNode))
-        .orDie
+      schema <- prepareSchema(schemaContent)
       jsonNode <- objectMapper
         .readTreeM(json)
         .orElseFail(JsonSchemaValidationError.InvalidJson(""))
       result = schema.validate(jsonNode)
       _ <- ZIO.unless(result.isSuccess) {
-        val errors = Chunk
-          .fromJavaIterator(result.iterator())
-          .map(_.getMessage)
-          .mkString(",")
-        ZIO.fail(JsonSchemaValidationError.ValidationFailure(errors))
+        buildErrorResponse(result)
       }
     } yield ()
+  }
+
+  private def prepareSchema(schemaContent: JsonSchema) = (for {
+    schemaContentNode <- objectMapper
+      .readTreeM(schemaContent.content)
+    schema <- ZIO
+      .attempt(JsonSchemaFactory.byDefault().getJsonSchema(schemaContentNode))
+  } yield schema).orElseFail(JsonSchemaValidationError.SchemaError)
+
+  private def buildErrorResponse(result: ProcessingReport) = {
+    val errors = Chunk
+      .fromJavaIterator(result.iterator())
+      .map(_.getMessage)
+      .mkString(",")
+    ZIO.fail(JsonSchemaValidationError.ValidationFailure(errors))
   }
 }
 

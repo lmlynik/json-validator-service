@@ -115,6 +115,30 @@ object JsonSchemaValidatorSpec extends ZIOSpecDefault {
           )
         )
       )
+    },
+    test("handles invalid schema") {
+      for {
+        jsonValidator <- ZIO.service[JsonSchemaValidator]
+        res <- jsonValidator
+          .validateAgainstSchema(
+            JsonSchema("""{/}"""),
+            """
+            |{
+            |  "destination": "/mnt/storage",
+            |  "chunks": {
+            |    "size": 1024
+            |  }
+            |}
+            |""".stripMargin
+          )
+          .either
+      } yield assert(res)(
+        isLeft(
+          equalTo(
+            JsonSchemaValidationError.SchemaError
+          )
+        )
+      )
     }
   ).provide(
     ZLayer.succeed(new ObjectMapper()),
