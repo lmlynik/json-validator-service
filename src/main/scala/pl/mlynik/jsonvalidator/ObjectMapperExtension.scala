@@ -1,7 +1,8 @@
 package pl.mlynik.jsonvalidator
 
 import zio.*
-import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
 
 extension (objectMapper: ObjectMapper) {
   def readTreeM(json: String): Task[JsonNode] =
@@ -14,9 +15,7 @@ extension (objectMapper: ObjectMapper) {
       def stripNulls(node: JsonNode): Unit = {
         import com.fasterxml.jackson.databind.JsonNode
         val it = node.iterator
-        while ({
-          it.hasNext
-        }) {
+        while (it.hasNext) {
           val child = it.next
           if (child.isNull) it.remove()
           else stripNulls(child)

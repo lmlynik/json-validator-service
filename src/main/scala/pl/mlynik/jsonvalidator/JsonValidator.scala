@@ -1,6 +1,7 @@
 package pl.mlynik.jsonvalidator
 import zio.*
-import io.circe.*, io.circe.parser.*
+import io.circe.*
+import io.circe.parser.*
 
 enum JsonValidationError {
   case InvalidJson extends JsonValidationError
@@ -11,12 +12,11 @@ trait JsonValidator {
 }
 
 final case class JsonValidatorLive() extends JsonValidator() {
-  def validateJson(json: String): IO[JsonValidationError, Unit] = {
+  def validateJson(json: String): IO[JsonValidationError, Unit] =
     ZIO
       .fromEither(parse(json))
       .orElseFail(JsonValidationError.InvalidJson)
       .unit
-  }
 }
 
 object JsonValidatorLive {

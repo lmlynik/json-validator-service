@@ -20,16 +20,14 @@ trait JsonSchemaValidator {
   ): IO[JsonSchemaValidationError, Unit]
 }
 
-final case class JsonSchemaValidationLive()
-    extends JsonSchemaValidator() {
+final case class JsonSchemaValidationLive() extends JsonSchemaValidator() {
 
   private val objectMapper = ZIO.succeed(new ObjectMapper())
-  
+
   def validateAgainstSchema(
       schemaContent: JsonSchema,
       json: String
-  ): IO[JsonSchemaValidationError, Unit] = {
-
+  ): IO[JsonSchemaValidationError, Unit] =
     for {
       schema <- prepareSchema(schemaContent)
       objMapper <- objectMapper
@@ -41,7 +39,6 @@ final case class JsonSchemaValidationLive()
         buildErrorResponse(result)
       }
     } yield ()
-  }
 
   private def prepareSchema(schemaContent: JsonSchema) = (for {
     objMapper <- objectMapper
@@ -61,6 +58,6 @@ final case class JsonSchemaValidationLive()
 }
 
 object JsonSchemaValidatorLive {
-  val layer: ULayer[ JsonSchemaValidator] =
+  val layer: ULayer[JsonSchemaValidator] =
     ZLayer.fromFunction(JsonSchemaValidationLive.apply _)
 }

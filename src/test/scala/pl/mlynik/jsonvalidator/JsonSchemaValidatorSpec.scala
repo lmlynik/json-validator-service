@@ -133,7 +133,6 @@ object JsonSchemaValidatorSpec extends ZIOSpecDefault {
       )
     }
   ).provide(
-    ZLayer.succeed(new ObjectMapper()),
     JsonSchemaValidatorLive.layer
   )
 }

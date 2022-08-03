@@ -3,6 +3,8 @@ package pl.mlynik.jsonvalidator
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.circe.generic.auto.*
 import sttp.tapir.EndpointOutput.StatusCode
+import sttp.tapir.Codec
+import sttp.tapir.CodecFormat
 import sttp.tapir.PublicEndpoint
 import sttp.tapir.server.ziohttp.ZioHttpInterpreter
 import sttp.tapir.ztapir.ZServerEndpoint
@@ -14,7 +16,7 @@ import sttp.tapir.ztapir.*
 import sttp.tapir.server.ziohttp.ZioHttpInterpreter
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
 import zhttp.service.Server
-import sttp.model.{StatusCode => ModelStatusCode}
+import sttp.model.StatusCode as ModelStatusCode
 
 final case class JsonValidatorServer(
     jsonSchemaValidator: JsonSchemaValidator,
@@ -42,8 +44,10 @@ final case class JsonValidatorServer(
       .errorOut(
         oneOf[ErrorResponse](
           oneOfVariant(
-            statusCode(ModelStatusCode.Conflict) and jsonBody[ErrorResponse]
-              .description("schema with id exists")
+            statusCode(ModelStatusCode.Conflict).and(
+              jsonBody[ErrorResponse]
+                .description("schema with id exists")
+            )
           )
         )
       )
@@ -55,13 +59,14 @@ final case class JsonValidatorServer(
       .errorOut(
         oneOf[ErrorResponse](
           oneOfVariant(
-            statusCode(ModelStatusCode.NotFound) and jsonBody[ErrorResponse]
-              .description("schema not found")
+            statusCode(ModelStatusCode.NotFound).and(
+              jsonBody[ErrorResponse]
+                .description("schema not found")
+            )
           )
         )
       )
       .out(stringBody)
-      .out(header("Content-Type", "application/json"))
 
   val validatePostEndpoint
       : PublicEndpoint[(String, String), ErrorResponse, SuccessResponse, Any] =
