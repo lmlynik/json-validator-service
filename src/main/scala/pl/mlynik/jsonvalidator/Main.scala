@@ -2,6 +2,7 @@ package pl.mlynik.jsonvalidator
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.circe.generic.auto.*
+import sttp.tapir.EndpointOutput.StatusCode
 import sttp.tapir.PublicEndpoint
 import sttp.tapir.server.ziohttp.ZioHttpInterpreter
 import sttp.tapir.ztapir.ZServerEndpoint
@@ -13,6 +14,7 @@ import sttp.tapir.ztapir.*
 import sttp.tapir.server.ziohttp.ZioHttpInterpreter
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
 import zhttp.service.Server
+import sttp.model.{StatusCode => ModelStatusCode}
 
 import java.nio.file.Paths
 
@@ -34,13 +36,27 @@ object Main extends ZIOAppDefault {
     endpoint.post
       .in("schema" / path[String]("schemaId"))
       .in(stringBody)
-      .errorOut(jsonBody[ErrorResponse])
+      .errorOut(
+        oneOf[ErrorResponse](
+          oneOfVariant(
+            statusCode(ModelStatusCode.Conflict) and jsonBody[ErrorResponse]
+              .description("schema with id exists")
+          )
+        )
+      )
       .out(jsonBody[SuccessResponse])
 
   val schemaGetEndpoint: PublicEndpoint[String, ErrorResponse, String, Any] =
     endpoint.get
       .in("schema" / path[String]("schemaId"))
-      .errorOut(jsonBody[ErrorResponse])
+      .errorOut(
+        oneOf[ErrorResponse](
+          oneOfVariant(
+            statusCode(ModelStatusCode.NotFound) and jsonBody[ErrorResponse]
+              .description("schema not found")
+          )
+        )
+      )
       .out(stringBody)
       .out(header("Content-Type", "application/json"))
 
@@ -63,7 +79,7 @@ object Main extends ZIOAppDefault {
               .store(schemaId, JsonSchema(schemaJson))
               .mapBoth(
                 error =>
-                  ErrorResponse("uploadSchema", schemaId, error.getMessage),
+                  ErrorResponse("uploadSchema", schemaId, error.toString),
                 _ => SuccessResponse("uploadSchema", schemaId)
               )
           }
@@ -74,7 +90,7 @@ object Main extends ZIOAppDefault {
               .load(schemaId)
               .mapBoth(
                 error =>
-                  ErrorResponse("downloadSchema", schemaId, error.getMessage),
+                  ErrorResponse("downloadSchema", schemaId, error.toString),
                 jsonSchema => jsonSchema.content
               )
           }

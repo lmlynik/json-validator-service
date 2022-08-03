@@ -18,6 +18,13 @@ object JsonSchemaStoreSpec extends ZIOSpecDefault {
         loadedSchema <- jsonSchemaStoreLive.load("test-schema")
 
       } yield assert(loadedSchema)(equalTo(testSchema))
+    },
+    test("handles missing schema") {
+      for {
+        jsonSchemaStoreLive <- ZIO.service[JsonSchemaStore]
+        error <- jsonSchemaStoreLive.load("test-schema").either
+
+      } yield assert(error)(isLeft)
     }
   ).provide(
     JsonValidatorLive.layer,
