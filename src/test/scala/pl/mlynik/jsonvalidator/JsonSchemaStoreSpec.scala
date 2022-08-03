@@ -30,12 +30,18 @@ object JsonSchemaStoreSpec extends ZIOSpecDefault {
         error <- jsonSchemaStoreLive.load("test-schema").either
 
       } yield assert(error)(isLeft)
+    },
+    test("handles conflicting schema schema") {
+      for {
+        jsonSchemaStoreLive <- ZIO.service[JsonSchemaStore]
+        storedFilePath <- jsonSchemaStoreLive.store("test-schema", testSchema)
+        error <- jsonSchemaStoreLive.store("test-schema", testSchema).either
+        _ <- removeFile(storedFilePath)
+      } yield assert(error)(isLeft(equalTo(JsonStoreError.SchemaAlreadyExists)))
     }
   ).provide(
     JsonValidatorLive.layer,
-    ZLayer.fromZIO(
-      ZIO.attempt(Paths.get(java.lang.System.getProperty("java.io.tmpdir")))
-    ),
+    ZLayer.succeed(Paths.get(java.lang.System.getProperty("java.io.tmpdir"))),
     JsonSchemaStoreLive.layer
   )
 }
