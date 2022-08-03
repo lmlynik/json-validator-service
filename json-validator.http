@@ -1,0 +1,54 @@
+### Upload Schema
+POST http://localhost:8080/schema/test-config
+Content-Type: application/json
+
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "source": {
+      "type": "string"
+    },
+    "destination": {
+      "type": "string"
+    },
+    "timeout": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 32767
+    },
+    "chunks": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "integer"
+        },
+        "number": {
+          "type": "integer"
+        }
+      },
+      "required": ["size"]
+    }
+  },
+  "required": ["source", "destination"]
+}
+
+### Download schema
+GET http://localhost:8080/schema/test-config
+Content-Type: application/json
+Accept: application/json
+
+
+### Validate JSON against schema
+POST http://localhost:8080/validate/test-config
+Content-Type: application/json
+
+{
+  "source": "/home/alice/image.iso",
+  "destination": "/mnt/storage",
+  "timeout": null,
+  "chunks": {
+    "size": 1024,
+    "number": null
+  }
+}
