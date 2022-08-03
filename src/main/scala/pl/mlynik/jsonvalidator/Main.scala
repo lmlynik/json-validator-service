@@ -42,6 +42,7 @@ object Main extends ZIOAppDefault {
       .in("schema" / path[String]("schemaId"))
       .errorOut(jsonBody[ErrorResponse])
       .out(stringBody)
+      .out(header("Content-Type", "application/json"))
 
   val validatePostEndpoint
       : PublicEndpoint[(String, String), ErrorResponse, SuccessResponse, Any] =
@@ -52,65 +53,66 @@ object Main extends ZIOAppDefault {
       .out(jsonBody[SuccessResponse])
 
   override def run = {
-    val r = for {
+    val app = for {
       jsonSchemaStore <- ZIO.service[JsonSchemaStore]
       jsonSchemaValidator <- ZIO.service[JsonSchemaValidator]
+      routes = {
+        val schemaPostServerEndpoint: ZServerEndpoint[Any, Any] =
+          schemaPostEndpoint.zServerLogic { case (schemaId, schemaJson) =>
+            jsonSchemaStore
+              .store(schemaId, JsonSchema(schemaJson))
+              .mapBoth(
+                error =>
+                  ErrorResponse("uploadSchema", schemaId, error.getMessage),
+                _ => SuccessResponse("uploadSchema", schemaId)
+              )
+          }
 
-    } yield {
-      val schemaPostServerEndpoint: ZServerEndpoint[Any, Any] =
-        schemaPostEndpoint.zServerLogic { case (schemaId, schemaJson) =>
-          jsonSchemaStore
-            .store(schemaId, JsonSchema(schemaJson))
-            .mapBoth(
+        val schemaGetServerEndpoint: ZServerEndpoint[Any, Any] =
+          schemaGetEndpoint.zServerLogic { schemaId =>
+            jsonSchemaStore
+              .load(schemaId)
+              .mapBoth(
+                error =>
+                  ErrorResponse("downloadSchema", schemaId, error.getMessage),
+                jsonSchema => jsonSchema.content
+              )
+          }
+
+        val validatePostServerEndpoint: ZServerEndpoint[Any, Any] =
+          validatePostEndpoint.zServerLogic { case (schemaId, json) =>
+            val logic = for {
+              schema <- jsonSchemaStore.load(schemaId)
+              _ <- jsonSchemaValidator.validateAgainstSchema(schema, json)
+            } yield ()
+
+            logic.mapBoth(
               error =>
-                ErrorResponse("uploadSchema", schemaId, error.getMessage),
-              _ => SuccessResponse("uploadSchema", schemaId)
+                ErrorResponse("validateDocument", schemaId, error.toString),
+              _ => SuccessResponse("validateDocument", schemaId)
             )
-        }
+          }
 
-      val schemaGetServerEndpoint: ZServerEndpoint[Any, Any] =
-        schemaGetEndpoint.zServerLogic { schemaId =>
-          jsonSchemaStore
-            .load(schemaId)
-            .mapBoth(
-              error =>
-                ErrorResponse("downloadSchema", schemaId, error.getMessage),
-              jsonSchema => jsonSchema.content
+        // Docs
+        val swaggerEndpoints: List[ZServerEndpoint[Any, Any]] =
+          SwaggerInterpreter()
+            .fromEndpoints[Task](
+              List(schemaPostEndpoint, schemaGetEndpoint, validatePostEndpoint),
+              "JSON Validation",
+              "1.0"
             )
-        }
 
-      val validatePostServerEndpoint: ZServerEndpoint[Any, Any] =
-        validatePostEndpoint.zServerLogic { case (schemaId, json) =>
-          val logic = for {
-            schema <- jsonSchemaStore.load(schemaId)
-            _ <- jsonSchemaValidator.validateAgainstSchema(schema, json)
-          } yield ()
-
-          logic.mapBoth(
-            error =>
-              ErrorResponse("validateDocument", schemaId, error.toString),
-            _ => SuccessResponse("validateDocument", schemaId)
-          )
-        }
-
-      // Docs
-      val swaggerEndpoints: List[ZServerEndpoint[Any, Any]] =
-        SwaggerInterpreter()
-          .fromEndpoints[Task](
-            List(schemaPostEndpoint, schemaGetEndpoint, validatePostEndpoint),
-            "JSON Validation",
-            "1.0"
-          )
-
-      ZioHttpInterpreter().toHttp(
-        List(
-          schemaPostServerEndpoint,
-          schemaGetServerEndpoint,
-          validatePostServerEndpoint
-        ) ++ swaggerEndpoints
-      )
-    }
-    r.flatMap(routes => Server.start(8080, routes))
+        ZioHttpInterpreter().toHttp(
+          List(
+            schemaPostServerEndpoint,
+            schemaGetServerEndpoint,
+            validatePostServerEndpoint
+          ) ++ swaggerEndpoints
+        )
+      }
+      _ <- Server.start(8080, routes)
+    } yield ()
+    app
       .provide(
         JsonValidatorLive.layer,
         JsonSchemaValidatorLive.layer,

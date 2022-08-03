@@ -36,7 +36,6 @@ Content-Type: application/json
 ### Download schema
 GET http://localhost:8080/schema/test-config
 Content-Type: application/json
-Accept: application/json
 
 
 ### Validate JSON against schema
