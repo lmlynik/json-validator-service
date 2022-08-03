@@ -13,8 +13,10 @@ trait JsonSchemaStore {
   def load(id: String): Task[JsonSchema]
 }
 
-final case class JsonSchemaStoreLive(private val directoryPath: Path)
-    extends JsonSchemaStore {
+final case class JsonSchemaStoreLive(
+    validator: JsonValidator,
+    directoryPath: Path
+) extends JsonSchemaStore {
 
   private def idWithExtension(id: String) =
     directoryPath.resolve(Paths.get(id + ".json"))
@@ -43,5 +45,6 @@ final case class JsonSchemaStoreLive(private val directoryPath: Path)
 }
 
 object JsonSchemaStoreLive {
-  val layer = ZLayer.fromFunction(JsonSchemaStoreLive.apply _)
+  val layer: ZLayer[JsonValidator & Path, Nothing, JsonSchemaStore] =
+    ZLayer.fromFunction(JsonSchemaStoreLive.apply _)
 }
