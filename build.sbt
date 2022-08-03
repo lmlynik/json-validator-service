@@ -1,11 +1,10 @@
 ThisBuild / scalaVersion     := "3.1.3"
 ThisBuild / version          := "0.1.0-SNAPSHOT"
-ThisBuild / organization     := "com.example"
-ThisBuild / organizationName := "example"
+ThisBuild / organization     := "pl.lmlynik"
 
 lazy val root = (project in file("."))
   .settings(
-    name := "zio-service",
+    name := "json-validator-service",
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio" % "2.0.0",
       "dev.zio" %% "zio-test" % "2.0.0" % Test,

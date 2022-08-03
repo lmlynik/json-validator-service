@@ -1,4 +1,3 @@
-
 import io.circe.generic.auto.*
 import sttp.tapir.PublicEndpoint
 import sttp.tapir.server.ziohttp.ZioHttpInterpreter
@@ -17,23 +16,30 @@ object Main extends ZIOAppDefault {
 
   // Sample endpoint, with the logic implemented directly using .toRoutes
   val petEndpoint: PublicEndpoint[Int, String, Pet, Any] =
-    endpoint.get.in("pet" / path[Int]("petId")).errorOut(stringBody).out(jsonBody[Pet])
-
+    endpoint.get
+      .in("pet" / path[Int]("petId"))
+      .errorOut(stringBody)
+      .out(jsonBody[Pet])
 
   // Same as above, but combining endpoint description with server logic:
-  val petServerEndpoint: ZServerEndpoint[Any, Any] = petEndpoint.zServerLogic { petId =>
-    if (petId == 35) {
-      ZIO.succeed(Pet("Tapirus terrestris", "https://en.wikipedia.org/wiki/Tapir"))
-    } else {
-      ZIO.fail("Unknown pet id")
-    }
+  val petServerEndpoint: ZServerEndpoint[Any, Any] = petEndpoint.zServerLogic {
+    petId =>
+      if (petId == 35) {
+        ZIO.succeed(
+          Pet("Tapirus terrestris", "https://en.wikipedia.org/wiki/Tapir")
+        )
+      } else {
+        ZIO.fail("Unknown pet id")
+      }
   }
 
   // Docs
-  val swaggerEndpoints: List[ZServerEndpoint[Any, Any]] = SwaggerInterpreter().fromEndpoints[Task](List(petEndpoint), "Our pets", "1.0")
+  val swaggerEndpoints: List[ZServerEndpoint[Any, Any]] = SwaggerInterpreter()
+    .fromEndpoints[Task](List(petEndpoint), "Our pets", "1.0")
 
   // Starting the server
-  val routes: HttpApp[Any, Throwable] = ZioHttpInterpreter().toHttp(List(petServerEndpoint) ++ swaggerEndpoints)
+  val routes: HttpApp[Any, Throwable] =
+    ZioHttpInterpreter().toHttp(List(petServerEndpoint) ++ swaggerEndpoints)
 
   override def run =
     Server.start(8080, routes).exitCode
