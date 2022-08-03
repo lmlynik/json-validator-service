@@ -9,12 +9,17 @@ import scala.io.Source
 
 case class JsonSchema(content: String)
 
-object SchemaNotFound
-object SchemaAlreadyExists
+enum JsonStoreError{
+  case SchemaAlreadyExists extends JsonStoreError
+}
+
+enum JsonLoadError {
+  case SchemaNotFound extends JsonLoadError
+}
 
 trait JsonSchemaStore {
-  def store(id: String, schema: JsonSchema): IO[SchemaAlreadyExists.type, Unit]
-  def load(id: String): IO[SchemaNotFound.type, JsonSchema]
+  def store(id: String, schema: JsonSchema): IO[JsonStoreError, Unit]
+  def load(id: String): IO[JsonLoadError, JsonSchema]
 }
 
 final case class JsonSchemaStoreLive(
@@ -27,6 +32,7 @@ final case class JsonSchemaStoreLive(
 
   private def writeFile(path: Path, content: String): IO[IOException, Path] =
     ZIO.scoped {
+      ZIO.log(s"writing to $path") *>
       ZIO.attemptBlockingIO(
         Files.write(
           path,
@@ -38,22 +44,23 @@ final case class JsonSchemaStoreLive(
     }
 
   private def readFile(path: Path): IO[IOException, String] = ZIO.scoped {
+    ZIO.log(s"loading from $path") *>
     ZIO.attemptBlockingIO(Files.readString(path, StandardCharsets.UTF_8))
   }
 
   def store(
       id: String,
       schema: JsonSchema
-  ): IO[SchemaAlreadyExists.type, Unit] = ZIO.scoped {
+  ): IO[JsonStoreError, Unit] = ZIO.scoped {
     val path = idWithExtension(id)
     if (Files.exists(path)) {
-      ZIO.fail(SchemaAlreadyExists)
+      ZIO.fail(JsonStoreError.SchemaAlreadyExists)
     } else
       writeFile(idWithExtension(id), schema.content).unit.orDie
   }
 
-  def load(id: String): IO[SchemaNotFound.type, JsonSchema] =
-    readFile(idWithExtension(id)).mapBoth(_ => SchemaNotFound, JsonSchema.apply)
+  def load(id: String): IO[JsonLoadError, JsonSchema] =
+    readFile(idWithExtension(id)).mapBoth(_ => JsonLoadError.SchemaNotFound, JsonSchema.apply)
 }
 
 object JsonSchemaStoreLive {
