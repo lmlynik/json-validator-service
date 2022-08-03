@@ -62,7 +62,7 @@ object JsonSchemaValidatorSpec extends ZIOSpecDefault {
           .either
       } yield assert(res)(isRight)
     },
-    test("validated json and returns the error - invalid type") {
+    test("pre-cleans json for validation") {
       for {
         jsonValidator <- ZIO.service[JsonSchemaValidator]
         res <- jsonValidator
@@ -80,15 +80,7 @@ object JsonSchemaValidatorSpec extends ZIOSpecDefault {
             |""".stripMargin
           )
           .either
-      } yield assert(res)(
-        isLeft(
-          equalTo(
-            JsonSchemaValidationError.ValidationFailure(error =
-              "instance type (null) does not match any allowed primitive type (allowed: [\"integer\"])"
-            )
-          )
-        )
-      )
+      } yield assert(res)(isRight)
     },
     test("validated json and returns the error - missing required") {
       for {

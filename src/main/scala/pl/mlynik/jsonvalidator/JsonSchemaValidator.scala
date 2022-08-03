@@ -8,7 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.fge.jsonschema.core.report.ProcessingReport
 
 enum JsonSchemaValidationError {
-  case InvalidJson(error: String) extends JsonSchemaValidationError
+  case InvalidJson extends JsonSchemaValidationError
   case ValidationFailure(error: String) extends JsonSchemaValidationError
   case SchemaError extends JsonSchemaValidationError
 }
@@ -31,8 +31,8 @@ final case class JsonSchemaValidationLive(objectMapper: ObjectMapper)
     for {
       schema <- prepareSchema(schemaContent)
       jsonNode <- objectMapper
-        .readTreeM(json)
-        .orElseFail(JsonSchemaValidationError.InvalidJson(""))
+        .readTreeAndCleanM(json)
+        .orElseFail(JsonSchemaValidationError.InvalidJson)
       result = schema.validate(jsonNode)
       _ <- ZIO.unless(result.isSuccess) {
         buildErrorResponse(result)
