@@ -1,3 +1,5 @@
+package pl.mlynik.jsonvalidator
+
 import io.circe.generic.auto.*
 import sttp.tapir.PublicEndpoint
 import sttp.tapir.server.ziohttp.ZioHttpInterpreter
